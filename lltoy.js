@@ -1,3 +1,4 @@
+"use strict";
 $(function() {
   var Proposition = (function() {
     var Proposition = function() {
@@ -10,6 +11,9 @@ $(function() {
     };
     PLLAtom.prototype = Object.create(Proposition.prototype);
     PLLAtom.prototype.constructor = PLLAtom;
+    PLLAtom.prototype.is_conjunctive = null;
+    PLLAtom.prototype.llkind = "atom";
+    PLLAtom.prototype.arity = 0;
     PLLAtom.prototype.toText = function(prec) {
       return this.name;
     }
@@ -22,6 +26,9 @@ $(function() {
     };
     PLLImpl.prototype = Object.create(Proposition.prototype);
     PLLImpl.prototype.constructor = PLLImpl;
+    PLLImpl.prototype.is_conjunctive = false;
+    PLLImpl.prototype.llkind = "multiplicative";
+    PLLImpl.prototype.arity = 2;
     PLLImpl.prototype.toText = function(prec) {
       return "(" + this.lhs.toText() + "⊸" + this.rhs.toText() + ")";
     };
@@ -33,6 +40,9 @@ $(function() {
     };
     PLLNeg.prototype = Object.create(Proposition.prototype);
     PLLNeg.prototype.constructor = PLLNeg;
+    PLLNeg.prototype.is_conjunctive = null;
+    PLLNeg.prototype.llkind = "neg";
+    PLLNeg.prototype.arity = 1;
     PLLNeg.prototype.toText = function(prec) {
       return "(¬" + this.sub.toText() + ")";
     };
@@ -45,6 +55,9 @@ $(function() {
     };
     PLLWith.prototype = Object.create(Proposition.prototype);
     PLLWith.prototype.constructor = PLLWith;
+    PLLWith.prototype.is_conjunctive = true;
+    PLLWith.prototype.llkind = "additive";
+    PLLWith.prototype.arity = 2;
     PLLWith.prototype.toText = function(prec) {
       return "(" + this.lhs.toText() + "＆" + this.rhs.toText() + ")";
     };
@@ -55,6 +68,9 @@ $(function() {
     };
     PLLTop.prototype = Object.create(Proposition.prototype);
     PLLTop.prototype.constructor = PLLTop;
+    PLLTop.prototype.is_conjunctive = true;
+    PLLTop.prototype.llkind = "additive";
+    PLLTop.prototype.arity = 0;
     PLLTop.prototype.toText = function(prec) {
       return "⊤";
     };
@@ -67,6 +83,9 @@ $(function() {
     };
     PLLPlus.prototype = Object.create(Proposition.prototype);
     PLLPlus.prototype.constructor = PLLPlus;
+    PLLPlus.prototype.is_conjunctive = false;
+    PLLPlus.prototype.llkind = "additive";
+    PLLPlus.prototype.arity = 2;
     PLLPlus.prototype.toText = function(prec) {
       return "(" + this.lhs.toText() + "⊕" + this.rhs.toText() + ")";
     };
@@ -77,6 +96,9 @@ $(function() {
     };
     PLLZero.prototype = Object.create(Proposition.prototype);
     PLLZero.prototype.constructor = PLLZero;
+    PLLZero.prototype.is_conjunctive = false;
+    PLLZero.prototype.llkind = "additive";
+    PLLZero.prototype.arity = 0;
     PLLZero.prototype.toText = function(prec) {
       return "0";
     };
@@ -89,6 +111,9 @@ $(function() {
     };
     PLLTensor.prototype = Object.create(Proposition.prototype);
     PLLTensor.prototype.constructor = PLLTensor;
+    PLLTensor.prototype.is_conjunctive = true;
+    PLLTensor.prototype.llkind = "multiplicative";
+    PLLTensor.prototype.arity = 2;
     PLLTensor.prototype.toText = function(prec) {
       return "(" + this.lhs.toText() + "⊗" + this.rhs.toText() + ")";
     };
@@ -99,6 +124,9 @@ $(function() {
     };
     PLLOne.prototype = Object.create(Proposition.prototype);
     PLLOne.prototype.constructor = PLLOne;
+    PLLOne.prototype.is_conjunctive = true;
+    PLLOne.prototype.llkind = "multiplicative";
+    PLLOne.prototype.arity = 0;
     PLLOne.prototype.toText = function(prec) {
       return "1";
     };
@@ -111,6 +139,9 @@ $(function() {
     };
     PLLPar.prototype = Object.create(Proposition.prototype);
     PLLPar.prototype.constructor = PLLPar;
+    PLLPar.prototype.is_conjunctive = false;
+    PLLPar.prototype.llkind = "multiplicative";
+    PLLPar.prototype.arity = 2;
     PLLPar.prototype.toText = function(prec) {
       return "(" + this.lhs.toText() + "⅋" + this.rhs.toText() + ")";
     };
@@ -121,6 +152,9 @@ $(function() {
     };
     PLLBot.prototype = Object.create(Proposition.prototype);
     PLLBot.prototype.constructor = PLLBot;
+    PLLBot.prototype.is_conjunctive = false;
+    PLLBot.prototype.llkind = "multiplicative";
+    PLLBot.prototype.arity = 0;
     PLLBot.prototype.toText = function(prec) {
       return "⊥";
     };
@@ -132,6 +166,9 @@ $(function() {
     };
     PLLOfc.prototype = Object.create(Proposition.prototype);
     PLLOfc.prototype.constructor = PLLOfc;
+    PLLOfc.prototype.is_conjunctive = true;
+    PLLOfc.prototype.llkind = "exponential";
+    PLLOfc.prototype.arity = 1;
     PLLOfc.prototype.toText = function(prec) {
       return "(!" + this.sub.toText() + ")";
     };
@@ -143,6 +180,9 @@ $(function() {
     };
     PLLWhyn.prototype = Object.create(Proposition.prototype);
     PLLWhyn.prototype.constructor = PLLWhyn;
+    PLLWhyn.prototype.is_conjunctive = false;
+    PLLWhyn.prototype.llkind = "exponential";
+    PLLWhyn.prototype.arity = 1;
     PLLWhyn.prototype.toText = function(prec) {
       return "(?" + this.sub.toText() + ")";
     };
@@ -268,6 +308,212 @@ $(function() {
     return result[0];
   };
 
+  var SequentItem = (function() {
+    var SequentItem = function(prop, is_in_succedent) {
+      var self = this;
+      this.parent = null;
+      this.prop = prop;
+      this.sequent = null;
+      this.is_in_succedent = is_in_succedent;
+
+      this.html_main = $("<button></button>");
+      this.html_main.addClass("btn");
+      this.html_main.addClass("btn-default");
+      this.html_main.text(this.prop.toText());
+      this.html_main.click(function() {
+        if(self.sequent.children == null) {
+          self.sequent.applyOn(self);
+        }
+      });
+    };
+    SequentItem.prototype.update = function() {
+      this.html_main.removeClass("btn-default");
+      this.html_main.removeClass("btn-primary");
+      this.html_main.removeClass("btn-info");
+      this.html_main.removeClass("disabled");
+      if(this.sequent.children == null) {
+        if(this == this.sequent.pending_target) {
+          this.html_main.addClass("btn-info");
+        } else {
+          this.html_main.addClass("btn-default");
+        }
+      } else {
+        this.html_main.addClass("disabled");
+        var is_in_target = false;
+        for(var i = 0; i < this.sequent.targets.length; ++i) {
+          if(this == this.sequent.targets[i]) {
+            is_in_target = true;
+          }
+        }
+        if(is_in_target) {
+          this.html_main.addClass("btn-primary");
+        } else {
+          this.html_main.addClass("btn-default");
+        }
+      }
+    };
+    return SequentItem;
+  })();
+  var Sequent = (function() {
+    var Sequent = function(parent, items) {
+      var self = this;
+      this.parent = parent;
+      this.items = items;
+      this.pending_target = null;
+      this.targets = null;
+      this.children = null;
+      this.update_hook = null;
+      for(var i = 0; i < this.items.length; ++i) {
+        this.items[i].sequent = this;
+      }
+
+      this.html_container = $("<div></div>");
+      this.html_main = $("<span></span>").appendTo(this.html_container);
+      this.html_main.addClass("btn-group");
+      this.html_ul = $("<ul></ul>").appendTo(this.html_container);
+      for(var i = 0; i < this.items.length; ++i) {
+        if(!this.items[i].is_in_succedent) {
+          this.items[i].html_main.appendTo(this.html_main);
+        }
+      }
+      this.html_turnstile = $("<button class=\"btn btn-danger disabled\">⊦</button>").appendTo(this.html_main);
+      this.html_turnstile.click(function() {
+        if(self.children != null) {
+          self.targets = null;
+          self.children = null;
+          self.reconstructChildren();
+          self.triggerUpdate();
+        }
+      });
+      for(var i = 0; i < this.items.length; ++i) {
+        if(this.items[i].is_in_succedent) {
+          this.items[i].html_main.appendTo(this.html_main);
+        }
+      }
+    };
+    Sequent.prototype.applyOn = function(item) {
+      var old_pending_target = this.pending_target;
+      this.pending_target = null;
+      this.children = null;
+      this.targets = null;
+
+      if(item.prop instanceof PLLAtom) {
+        if(old_pending_target != null &&
+            (old_pending_target.is_in_succedent ^ item.is_in_succedent) &&
+            old_pending_target.prop.name == item.prop.name) {
+          this.children = [];
+          this.targets = [old_pending_target, item];
+        } else {
+          this.pending_target = item;
+        }
+      } else if(item.prop instanceof PLLNeg) {
+        var child_items = [];
+        var child_items_last = [];
+        for(var i = 0; i < this.items.length; ++i) {
+          if(this.items[i] == item) {
+            child_items_last.push(new SequentItem(
+                  item.prop.sub, !item.is_in_succedent));
+          } else {
+            var child_item = new SequentItem(
+                this.items[i].prop, this.items[i].is_in_succedent);
+            child_item.parent = this.items[i];
+            child_items.push(child_item);
+          }
+        }
+        if(item.is_in_succedent) {
+          child_items = child_items.concat(child_items_last);
+        } else {
+          child_items = child_items_last.concat(child_items);
+        }
+        this.children = [new Sequent(this, child_items)];
+        this.targets = [item];
+      } else if(item.prop.llkind == "multiplicative") {
+        if(item.prop.is_conjunctive ^ item.is_in_succedent) {
+          var child_items = [];
+          var child_items_last = [];
+          for(var i = 0; i < this.items.length; ++i) {
+            if(this.items[i] == item) {
+              if(item.prop instanceof PLLImpl) {
+                child_items_last.push(new SequentItem(
+                      item.prop.lhs, !item.is_in_succedent));
+                child_items.push(new SequentItem(
+                      item.prop.rhs, item.is_in_succedent));
+              } else if(item.prop.arity == 2) {
+                child_items.push(new SequentItem(
+                      item.prop.lhs, item.is_in_succedent));
+                child_items.push(new SequentItem(
+                      item.prop.rhs, item.is_in_succedent));
+              }
+            } else {
+              var child_item = new SequentItem(
+                  this.items[i].prop, this.items[i].is_in_succedent);
+              child_item.parent = this.items[i];
+              child_items.push(child_item);
+            }
+          }
+          child_items = child_items.concat(child_items_last);
+          this.children = [new Sequent(this, child_items)];
+          this.targets = [item];
+        } else {
+          for(var childidx = 0; childidx < item.prop.arity; ++childidx) {
+            console.log("TODO");
+          }
+        }
+      } else {
+        console.log("TODO");
+      }
+      this.reconstructChildren();
+      this.triggerUpdate();
+    };
+    Sequent.prototype.triggerUpdate = function() {
+      if(this.parent == null) {
+        this.update();
+      } else {
+        this.parent.triggerUpdate();
+      }
+    }
+    Sequent.prototype.reconstructChildren = function() {
+      this.html_ul.empty();
+      this.html_turnstile.removeClass("btn-danger");
+      this.html_turnstile.removeClass("btn-success");
+      this.html_turnstile.removeClass("disabled");
+      if(this.children == null) {
+        this.html_turnstile.addClass("btn-danger");
+        this.html_turnstile.addClass("disabled");
+      } else {
+        this.html_turnstile.addClass("btn-success");
+        for(var i = 0; i < this.children.length; ++i) {
+          var html_li = $("<li></li>").appendTo(this.html_ul);
+          html_li.append(this.children[i].html_container);
+        }
+      }
+    };
+    Sequent.prototype.update = function() {
+      for(var i = 0; i < this.items.length; ++i) {
+        this.items[i].update();
+      }
+
+      if(this.children != null) {
+        for(var i = 0; i < this.children.length; ++i) {
+          this.children[i].update();
+        }
+      }
+
+      if(this.update_hook) {
+        this.update_hook();
+      }
+    };
+    Sequent.prototype.countRemainingGoals = function() {
+      if(this.children == null) return 1;
+      var sum = 0;
+      for(var i = 0; i < this.children.length; ++i) {
+        sum += this.children[i].countRemainingGoals();
+      }
+      return sum;
+    };
+    return Sequent;
+  })();
+
   (function() {
     var default_propositions_data = [
       "A⊸A",
@@ -317,6 +563,9 @@ $(function() {
     ];
     var default_propositions = $("#default-propositions");
     var proposition_to_solve = $("#proposition-to-solve");
+    var proof_status = $("#proof-status");
+    var proof_status_label = $("<span class=\"label label-default\"></span>").appendTo(proof_status);
+    proof_status_label.text("Input or select a proposition.");
     var proof_area = $("#proof-area");
     for(var i = 0; i < default_propositions_data.length; ++i) {
       var li = $("<li></li>");
@@ -328,13 +577,29 @@ $(function() {
       });
       default_propositions.append(li);
     }
+    var root_sequent = null;
     $("#start-proving").click(function() {
       var propstr = proposition_to_solve.val();
       var proplex = lex(propstr);
-      console.log(proplex);
       var prop = parse(proplex);
-      console.log(prop);
-      console.log(prop.toText());
+      root_sequent = new Sequent(null, [new SequentItem(prop, true)]);
+      root_sequent.update_hook = function() {
+        proof_status_label.removeClass("label-default");
+        proof_status_label.removeClass("label-success");
+        proof_status_label.removeClass("label-warning");
+        var count = root_sequent.countRemainingGoals();
+        if(count == 0) {
+          proof_status_label.text("complete!");
+          proof_status_label.addClass("label-success");
+        } else {
+          proof_status_label.text("There are " + count + " remaining goal(s).");
+          proof_status_label.addClass("label-warning");
+        }
+      };
+      proof_area.empty();
+      proof_area.append(root_sequent.html_container);
+
+      root_sequent.triggerUpdate();
     });
   })();
 });
