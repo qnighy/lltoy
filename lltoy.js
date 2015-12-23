@@ -308,13 +308,70 @@ $(function() {
     return result[0];
   };
 
+  var ItemUsage = (function() {
+    var ItemUsage = function(parent) {
+      this.parent = parent;
+      this.children = null;
+      this.usage = null;
+      if(this.parent == null) {
+        this.usage = 1;
+      }
+    };
+    ItemUsage.prototype.setUsage = function(new_usage) {
+      if(this.usage == new_usage) return;
+      this.usage = new_usage;
+      if(this.parent != null) {
+        this.parent.propagateFromChildren();
+        this.parent.propagateToChildren();
+      }
+      this.propagateToChildren();
+    };
+    ItemUsage.prototype.propagateFromChildren = function() {
+      if(this.children == null) return;
+      if((this.children[0] != null && this.children[0].usage == 1) ||
+        (this.children[1] != null && this.children[1].usage == 1)) {
+        this.setUsage(1);
+      }
+      if(this.children[0] != null && this.children[0].usage == 0 &&
+          this.children[1] != null && this.children[1].usage == 0) {
+        this.setUsage(0);
+      }
+    };
+    ItemUsage.prototype.propagateToChildren = function() {
+      if(this.children == null) return;
+      if(this.usage == 0) {
+        for(var i = 0; i < 2; ++i) {
+          if(this.children[i] != null) {
+            this.children[i].setUsage(0);
+          }
+        }
+      } else if(this.usage == 1 &&
+          this.children[0] != null &&
+          this.children[1] != null) {
+        if(this.children[0].usage != null) {
+          this.children[1].setUsage(this.usage - this.children[0].usage);
+        }
+        if(this.children[1].usage != null) {
+          this.children[0].setUsage(this.usage - this.children[1].usage);
+        }
+      }
+    };
+    ItemUsage.prototype.childrenUpdated = function() {
+      this.propagateToChildren();
+      this.propagateFromChildren();
+    };
+    return ItemUsage;
+  })();
+
   var SequentItem = (function() {
     var SequentItem = function(prop, is_in_succedent) {
       var self = this;
       this.parent = null;
+      this.inheritance = null;
       this.prop = prop;
       this.sequent = null;
       this.is_in_succedent = is_in_succedent;
+      this.usage = null;
 
       this.html_main = $("<button></button>");
       this.html_main.addClass("btn");
@@ -339,17 +396,21 @@ $(function() {
         }
       } else {
         this.html_main.addClass("disabled");
-        var is_in_target = false;
-        for(var i = 0; i < this.sequent.targets.length; ++i) {
-          if(this == this.sequent.targets[i]) {
-            is_in_target = true;
-          }
-        }
-        if(is_in_target) {
+        if(this.sequent.targets.indexOf(this) >= 0) {
           this.html_main.addClass("btn-primary");
         } else {
           this.html_main.addClass("btn-default");
         }
+      }
+      if(this.usage.usage == 1) {
+        this.html_main.text(this.prop.toText());
+      } else {
+        this.html_main.text("[" + this.prop.toText() + "]");
+      }
+      if(this.usage.usage == 0) {
+        this.html_main.addClass("hidden");
+      } else {
+        this.html_main.removeClass("hidden");
       }
     };
     return SequentItem;
@@ -398,13 +459,23 @@ $(function() {
       this.targets = null;
 
       if(item.prop instanceof PLLAtom) {
+        this.pending_target = item;
         if(old_pending_target != null &&
             (old_pending_target.is_in_succedent ^ item.is_in_succedent) &&
             old_pending_target.prop.name == item.prop.name) {
-          this.children = [];
-          this.targets = [old_pending_target, item];
-        } else {
-          this.pending_target = item;
+          var usage_ok = true;
+          for(var i = 0; i < this.items.length; ++i) {
+            if(this.items[i] != item &&
+                this.items[i] != old_pending_target &&
+                this.items[i].usage.usage == 1) {
+              usage_ok = false;
+            }
+          }
+          if(usage_ok) {
+            this.children = [];
+            this.targets = [old_pending_target, item];
+            this.pending_target = null;
+          }
         }
       } else if(item.prop instanceof PLLNeg) {
         var child_items = [];
@@ -417,6 +488,7 @@ $(function() {
             var child_item = new SequentItem(
                 this.items[i].prop, this.items[i].is_in_succedent);
             child_item.parent = this.items[i];
+            child_item.inheritance = "same";
             child_items.push(child_item);
           }
         }
@@ -448,6 +520,7 @@ $(function() {
               var child_item = new SequentItem(
                   this.items[i].prop, this.items[i].is_in_succedent);
               child_item.parent = this.items[i];
+              child_item.inheritance = "same";
               child_items.push(child_item);
             }
           }
@@ -455,9 +528,39 @@ $(function() {
           this.children = [new Sequent(this, child_items)];
           this.targets = [item];
         } else {
+          var children = []
           for(var childidx = 0; childidx < item.prop.arity; ++childidx) {
-            console.log("TODO");
+            var child_items = [];
+            var child_items_last = [];
+            for(var i = 0; i < this.items.length; ++i) {
+              if(this.items[i] == item) {
+                if(item.prop instanceof PLLImpl && childidx == 0) {
+                  child_items_last.push(new SequentItem(
+                        item.prop.lhs, !item.is_in_succedent));
+                } else if(childidx == 0) {
+                  child_items.push(new SequentItem(
+                        item.prop.lhs, item.is_in_succedent));
+                } else {
+                  child_items.push(new SequentItem(
+                        item.prop.rhs, item.is_in_succedent));
+                }
+              } else {
+                var child_item = new SequentItem(
+                    this.items[i].prop, this.items[i].is_in_succedent);
+                child_item.parent = this.items[i];
+                if(childidx == 0) {
+                  child_item.inheritance = "multiplicative0";
+                } else {
+                  child_item.inheritance = "multiplicative1";
+                }
+                child_items.push(child_item);
+              }
+            }
+            child_items = child_items.concat(child_items_last);
+            children.push(new Sequent(this, child_items));
           }
+          this.children = children;
+          this.targets = [item];
         }
       } else {
         console.log("TODO");
@@ -467,6 +570,7 @@ $(function() {
     };
     Sequent.prototype.triggerUpdate = function() {
       if(this.parent == null) {
+        this.updateUsage();
         this.update();
       } else {
         this.parent.triggerUpdate();
@@ -485,6 +589,58 @@ $(function() {
         for(var i = 0; i < this.children.length; ++i) {
           var html_li = $("<li></li>").appendTo(this.html_ul);
           html_li.append(this.children[i].html_container);
+        }
+      }
+    };
+    Sequent.prototype.updateUsage = function() {
+      for(var i = 0; i < this.items.length; ++i) {
+        var item = this.items[i];
+        if(item.parent == null) {
+          item.usage = new ItemUsage(null);
+        } else if(item.inheritance == "same") {
+          item.usage = item.parent.usage;
+        } else if(item.inheritance == "multiplicative0") {
+          item.usage = new ItemUsage(item.parent.usage);
+          if(item.parent.usage.children == null) {
+            item.parent.usage.children = [null, null];
+          }
+          item.parent.usage.children[0] = item.usage;
+          item.parent.usage.childrenUpdated();
+        } else if(item.inheritance == "multiplicative1") {
+          item.usage = new ItemUsage(item.parent.usage);
+          if(item.parent.usage.children == null) {
+            item.parent.usage.children = [null, null];
+          }
+          item.parent.usage.children[1] = item.usage;
+          item.parent.usage.childrenUpdated();
+        }
+      }
+      if(this.targets != null) {
+        if(this.targets.length == 2 && this.targets[0].prop.llkind == "atom") {
+          for(var j = 0; j < this.items.length; ++j) {
+            if(this.targets.indexOf(this.items[j]) < 0) {
+              this.items[j].usage.setUsage(0);
+            }
+          }
+        }
+        for(var i = 0; i < this.targets.length; ++i) {
+          var item = this.targets[i];
+          item.usage.setUsage(1);
+          if(item.prop.llkind == "multiplicative" &&
+              item.prop.is_conjunctive == item.is_in_succedent &&
+              item.prop.arity == 0) {
+            for(var j = 0; j < this.items.length; ++j) {
+              if(this.items[j] != item) {
+                this.items[j].usage.setUsage(0);
+              }
+            }
+          }
+        }
+      }
+
+      if(this.children != null) {
+        for(var i = 0; i < this.children.length; ++i) {
+          this.children[i].updateUsage();
         }
       }
     };
