@@ -538,7 +538,7 @@ $(function() {
         this.targets = [old_pending_target, target_item];
         this.pending_target = target_item;
         if(old_pending_target == null ||
-            (old_pending_target.is_in_succedent == target_item.is_in_succedent) &&
+            (old_pending_target.is_in_succedent == target_item.is_in_succedent) ||
             old_pending_target.prop.name != target_item.prop.name) {
           cancelled = true;
         }
