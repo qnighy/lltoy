@@ -561,6 +561,19 @@ $(function() {
           }
           this.children = children;
           this.targets = [item];
+          if(item.prop.arity == 0) {
+            var usage_ok = true;
+            for(var i = 0; i < this.items.length; ++i) {
+              if(this.items[i] != item &&
+                  this.items[i].usage.usage == 1) {
+                usage_ok = false;
+              }
+            }
+            if(!usage_ok) {
+              this.children = null;
+              this.targets = null;
+            }
+          }
         }
       } else {
         console.log("TODO");
