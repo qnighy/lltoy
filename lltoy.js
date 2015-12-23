@@ -394,6 +394,12 @@ $(function() {
         } else {
           this.actions = ["add2"];
         }
+      } else if(this.prop.llkind == "exponential") {
+        if(this.prop.is_conjunctive ^ this.is_in_succedent) {
+          this.actions = ["dereliction", "weakening", "contraction"];
+        } else {
+          this.actions = ["promotion"];
+        }
       } else {
         console.log("TODO");
       }
@@ -416,6 +422,12 @@ $(function() {
             this.html_action_buttons[i].text(this.prop.lhs.toText());
           } else if(this.actions[i] == "add1R") {
             this.html_action_buttons[i].text(this.prop.rhs.toText());
+          } else if(this.actions[i] == "dereliction") {
+            this.html_action_buttons[i].text(this.prop.sub.toText());
+          } else if(this.actions[i] == "weakening") {
+            this.html_action_buttons[i].text("-");
+          } else if(this.actions[i] == "contraction") {
+            this.html_action_buttons[i].text(this.prop.toText() + ", " + this.prop.toText());
           }
           var fun = (function(action) {
             return (function() {
@@ -637,14 +649,13 @@ $(function() {
         }
       } else if(action == "add1L" || action == "add1R") {
         var child_items = [];
-        var child_items_last = [];
         for(var i = 0; i < this.items.length; ++i) {
           if(this.items[i] == item) {
             if(action == "add1L") {
-              child_items_last.push(new SequentItem(
+              child_items.push(new SequentItem(
                     item.prop.lhs, item.is_in_succedent));
             } else {
-              child_items_last.push(new SequentItem(
+              child_items.push(new SequentItem(
                     item.prop.rhs, item.is_in_succedent));
             }
           } else {
@@ -654,11 +665,6 @@ $(function() {
             child_item.inheritance = "same";
             child_items.push(child_item);
           }
-        }
-        if(item.is_in_succedent) {
-          child_items = child_items.concat(child_items_last);
-        } else {
-          child_items = child_items_last.concat(child_items);
         }
         this.children = [new Sequent(this, child_items)];
         this.targets = [item];
@@ -687,6 +693,55 @@ $(function() {
         }
         this.children = children;
         this.targets = [item];
+      } else if(action == "dereliction" || action == "weakening" || action == "contraction") {
+        var child_items = [];
+        for(var i = 0; i < this.items.length; ++i) {
+          if(this.items[i] == item) {
+            if(action == "dereliction") {
+              child_items.push(new SequentItem(
+                    item.prop.sub, item.is_in_succedent));
+            } else if(action == "contraction") {
+              child_items.push(new SequentItem(
+                    item.prop, item.is_in_succedent));
+              child_items.push(new SequentItem(
+                    item.prop, item.is_in_succedent));
+            }
+          } else {
+            var child_item = new SequentItem(
+                this.items[i].prop, this.items[i].is_in_succedent);
+            child_item.parent = this.items[i];
+            child_item.inheritance = "same";
+            child_items.push(child_item);
+          }
+        }
+        this.children = [new Sequent(this, child_items)];
+        this.targets = [item];
+      } else if(action == "promotion") {
+        var child_items = [];
+        var usage_ok = true;
+        for(var i = 0; i < this.items.length; ++i) {
+          if(this.items[i] == item) {
+            child_items.push(new SequentItem(
+                  item.prop.sub, item.is_in_succedent));
+          } else {
+            var child_item = new SequentItem(
+                this.items[i].prop, this.items[i].is_in_succedent);
+            child_item.parent = this.items[i];
+            child_item.inheritance = "same";
+            child_items.push(child_item);
+            if(this.items[i].prop.llkind != "exponential" ||
+                (this.items[i].prop.is_conjunctive == this.items[i].is_in_succedent)
+              ) {
+              if(this.items[i].usage.usage == 1) {
+                usage_ok = false;
+              }
+            }
+          }
+        }
+        if(usage_ok) {
+          this.children = [new Sequent(this, child_items)];
+          this.targets = [item];
+        }
       } else if(action == "do_nothing") {
         // do nothing
       } else {
@@ -761,6 +816,14 @@ $(function() {
                 this.items[j].usage.setUsage(0);
               }
             }
+          } else if(item.prop.llkind == "exponential" &&
+              item.prop.is_conjunctive == item.is_in_succedent) {
+            for(var j = 0; j < this.items.length; ++j) {
+              if(this.items[j] == item) continue;
+              if(this.items[j].prop.llkind == "exponential" &&
+                  (this.items[j].prop.is_conjunctive ^ this.items[j].is_in_succedent)) continue;
+              this.items[j].usage.setUsage(0);
+            }
           }
         }
       }
@@ -817,6 +880,8 @@ $(function() {
       "¬A⊗¬B⊸¬(A⅋B)",
       "¬(A⅋B)⊸¬A⊗¬B",
       "A⊗(B⅋C)⊸(A⊗B)⅋C",
+      "(B⊸C)⊸((A⊸B)⊸(A⊸C))",
+      "(A⊸(B⊸C))⊸(B⊸(A⊸C))",
       "A＆B⊸A＆B",
       "A⊕B⊸A⊕B",
       "A＆B⊸B＆A",
@@ -843,6 +908,34 @@ $(function() {
       "(A⅋B)＆(A⅋C)⊸A⅋(B＆C)",
       "A⅋⊤⊸⊤",
       "⊤⊸A⅋⊤",
+      "A⊗(B＆C)⊸(A⊗B)＆(A⊗C)",
+      "A⊗⊤⊸⊤",
+      "(A⅋B)⊕(A⅋C)⊸A⅋(B⊕C)",
+      "0⊸A⅋0",
+      "!A⊸A",
+      "!!A⊸!A",
+      "!A⊸!!A",
+      "A⊸?A",
+      "?A⊸??A",
+      "??A⊸?A",
+      "!A⊸!?!A",
+      "?!?A⊸?A",
+      "¬!A⊸?¬A",
+      "?¬A⊸¬!A",
+      "¬?A⊸!¬A",
+      "!¬A⊸¬?A",
+      "!(A＆B)⊸!A⊗!B",
+      "!A⊗!B⊸!(A＆B)",
+      "!⊤⊸1",
+      "1⊸!⊤",
+      "?(A⊕B)⊸?A⅋?B",
+      "?A⅋?B⊸?(A⊕B)",
+      "?0⊸⊥",
+      "⊥⊸?0",
+      "!?(!A＆!B)⊸!(?!A＆?!B)",
+      "!(?!A＆?!B)⊸!?(!A＆!B)",
+      "?!(?A⊕?B)⊸?(!?A⊕!?B)",
+      "?(!?A⊕!?B)⊸?!(?A⊕?B)",
     ];
     var default_propositions = $("#default-propositions");
     var proposition_to_solve = $("#proposition-to-solve");
@@ -865,6 +958,13 @@ $(function() {
       var propstr = proposition_to_solve.val();
       var proplex = lex(propstr);
       var prop = parse(proplex);
+      if(prop == null) {
+        proof_status_label.removeClass("label-default");
+        proof_status_label.removeClass("label-success");
+        proof_status_label.addClass("label-warning");
+        proof_status_label.text("Parse error.");
+        return;
+      }
       root_sequent = new Sequent(null, [new SequentItem(prop, true)]);
       root_sequent.update_hook = function() {
         proof_status_label.removeClass("label-default");

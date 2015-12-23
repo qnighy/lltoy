@@ -6,34 +6,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>LL Toy</title>
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
     <!--[if lt IE 9]>
       <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
       <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
   </head>
   <body>
-    <div class="container theme-showcase" role="main">
+    <div class="container" role="main">
       <div class="jumbotron">
         <h1>LL Toy</h1>
         <p>A B C ⊸ <sup>⊥</sup> ⊗ 1 ⅋ ⊥ ＆ ⊤ ⊕ 0 ! ?</p>
-      </div>
-    </div>
-    <div class="col-lg-6">
-      <div class="input-group">
-        <div class="input-group-btn">
-          <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Proposition <span class="caret"></span></button>
-          <ul id="default-propositions" class="dropdown-menu">
-          </ul>
+        <div class="input-group">
+          <div class="input-group-btn">
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Proposition <span class="caret"></span></button>
+            <ul id="default-propositions" class="dropdown-menu">
+            </ul>
+          </div>
+          <input id="proposition-to-solve" type="text" value="A⊸A" class="form-control" aria-label="...">
+          <span class="input-group-btn">
+            <button id="start-proving" type="button" class="btn btn-primary">Start!</button>
+          </span>
         </div>
-        <input id="proposition-to-solve" type="text" value="A⊸A" class="form-control" aria-label="...">
-        <span class="input-group-btn">
-          <button id="start-proving" type="button" class="btn btn-primary">Start!</button>
-        </span>
       </div>
     </div>
-    <div id="proof-status" class="col-lg-6"></div>
-    <div id="proof-area" class="col-lg-6">
-    </div>
+    <div id="proof-status" class="container"></div>
+    <div id="proof-area" class="container"></div>
     <script src="js/jquery-2.1.4.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="lltoy.js"></script>
