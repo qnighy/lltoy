@@ -373,44 +373,106 @@ $(function() {
       this.is_in_succedent = is_in_succedent;
       this.usage = null;
 
-      this.html_main = $("<button></button>");
-      this.html_main.addClass("btn");
-      this.html_main.addClass("btn-default");
-      this.html_main.text(this.prop.toText());
-      this.html_main.click(function() {
-        if(self.sequent.children == null) {
-          self.sequent.applyOn(self);
-        }
-      });
-    };
-    SequentItem.prototype.update = function() {
-      this.html_main.removeClass("btn-default");
-      this.html_main.removeClass("btn-primary");
-      this.html_main.removeClass("btn-info");
-      this.html_main.removeClass("disabled");
-      if(this.sequent.children == null) {
-        if(this == this.sequent.pending_target) {
-          this.html_main.addClass("btn-info");
+      this.actions = null;
+      if(this.prop instanceof PLLAtom) {
+        this.actions = ["atom"];
+      } else if(this.prop instanceof PLLNeg) {
+        this.actions = ["neg"];
+      } else if(this.prop.llkind == "multiplicative") {
+        if(this.prop.is_conjunctive ^ this.is_in_succedent) {
+          this.actions = ["mult1"];
         } else {
-          this.html_main.addClass("btn-default");
+          this.actions = ["mult2"];
+        }
+      } else if(this.prop.llkind == "additive") {
+        if(this.prop.is_conjunctive ^ this.is_in_succedent) {
+          if(this.prop.arity == 0) {
+            this.actions = ["do_nothing"];
+          } else {
+            this.actions = ["add1L", "add1R"];
+          }
+        } else {
+          this.actions = ["add2"];
         }
       } else {
-        this.html_main.addClass("disabled");
-        if(this.sequent.targets.indexOf(this) >= 0) {
-          this.html_main.addClass("btn-primary");
+        console.log("TODO");
+      }
+
+      this.html_main_button = $("<button></button>");
+      this.html_main_button.addClass("btn");
+
+      if(this.actions.length >= 2) {
+        this.html_main_button.addClass("dropdown-toggle");
+        this.html_main_button.attr("data-toggle", "dropdown");
+        this.html_main_button.attr("aria-haspopup", "true");
+        this.html_main_button.attr("aria-expanded", "false");
+        this.html_action_buttons_ul = $("<ul class=\"dropdown-menu\"></ul>");
+        this.html_action_buttons = Array(this.actions.length);
+        for(var i = 0; i < this.actions.length; ++i) {
+          this.html_action_buttons[i] = $("<button></button>");
+          this.html_action_buttons[i].addClass("btn");
+          this.html_action_buttons[i].addClass("btn-default");
+          if(this.actions[i] == "add1L") {
+            this.html_action_buttons[i].text(this.prop.lhs.toText());
+          } else if(this.actions[i] == "add1R") {
+            this.html_action_buttons[i].text(this.prop.rhs.toText());
+          }
+          var fun = (function(action) {
+            return (function() {
+              if(self.sequent.children == null) {
+                self.sequent.applyOn(self, action);
+              }
+            });
+          })(this.actions[i]);
+          this.html_action_buttons[i].click(fun);
+          $("<li></li>").appendTo(this.html_action_buttons_ul).append(this.html_action_buttons[i]);
+        }
+        this.html_main = $("<span class=\"btn-group\" role=\"group\"></span>");
+        this.html_main.append(this.html_main_button);
+        this.html_main.append(this.html_action_buttons_ul);
+      } else {
+        var fun = (function(action) {
+          return (function() {
+            if(self.sequent.children == null) {
+              self.sequent.applyOn(self, action);
+            }
+          });
+        })(this.actions[0]);
+        this.html_main_button.click(fun);
+        this.html_main = this.html_main_button;
+      }
+    };
+    SequentItem.prototype.update = function() {
+      this.html_main_button.removeClass("btn-default");
+      this.html_main_button.removeClass("btn-primary");
+      this.html_main_button.removeClass("btn-info");
+      this.html_main_button.removeClass("disabled");
+      if(this.sequent.children == null) {
+        if(this == this.sequent.pending_target) {
+          this.html_main_button.addClass("btn-info");
         } else {
-          this.html_main.addClass("btn-default");
+          this.html_main_button.addClass("btn-default");
+        }
+      } else {
+        this.html_main_button.addClass("disabled");
+        if(this.sequent.targets.indexOf(this) >= 0) {
+          this.html_main_button.addClass("btn-primary");
+        } else {
+          this.html_main_button.addClass("btn-default");
         }
       }
       if(this.usage.usage == 1) {
-        this.html_main.text(this.prop.toText());
+        this.html_main_button.text(this.prop.toText());
       } else {
-        this.html_main.text("[" + this.prop.toText() + "]");
+        this.html_main_button.text("[" + this.prop.toText() + "]");
+      }
+      if(this.actions.length >= 2) {
+        this.html_main_button.append(" <span class=\"caret\"></span>");
       }
       if(this.usage.usage == 0) {
-        this.html_main.addClass("hidden");
+        this.html_main_button.addClass("hidden");
       } else {
-        this.html_main.removeClass("hidden");
+        this.html_main_button.removeClass("hidden");
       }
     };
     return SequentItem;
@@ -452,13 +514,13 @@ $(function() {
         }
       }
     };
-    Sequent.prototype.applyOn = function(item) {
+    Sequent.prototype.applyOn = function(item, action) {
       var old_pending_target = this.pending_target;
       this.pending_target = null;
       this.children = null;
       this.targets = null;
 
-      if(item.prop instanceof PLLAtom) {
+      if(action == "atom") {
         this.pending_target = item;
         if(old_pending_target != null &&
             (old_pending_target.is_in_succedent ^ item.is_in_succedent) &&
@@ -477,7 +539,7 @@ $(function() {
             this.pending_target = null;
           }
         }
-      } else if(item.prop instanceof PLLNeg) {
+      } else if(action == "neg") {
         var child_items = [];
         var child_items_last = [];
         for(var i = 0; i < this.items.length; ++i) {
@@ -499,20 +561,117 @@ $(function() {
         }
         this.children = [new Sequent(this, child_items)];
         this.targets = [item];
-      } else if(item.prop.llkind == "multiplicative") {
-        if(item.prop.is_conjunctive ^ item.is_in_succedent) {
+      } else if(action == "mult1") {
+        var child_items = [];
+        var child_items_last = [];
+        for(var i = 0; i < this.items.length; ++i) {
+          if(this.items[i] == item) {
+            if(item.prop instanceof PLLImpl) {
+              child_items_last.push(new SequentItem(
+                    item.prop.lhs, !item.is_in_succedent));
+              child_items.push(new SequentItem(
+                    item.prop.rhs, item.is_in_succedent));
+            } else if(item.prop.arity == 2) {
+              child_items.push(new SequentItem(
+                    item.prop.lhs, item.is_in_succedent));
+              child_items.push(new SequentItem(
+                    item.prop.rhs, item.is_in_succedent));
+            }
+          } else {
+            var child_item = new SequentItem(
+                this.items[i].prop, this.items[i].is_in_succedent);
+            child_item.parent = this.items[i];
+            child_item.inheritance = "same";
+            child_items.push(child_item);
+          }
+        }
+        child_items = child_items.concat(child_items_last);
+        this.children = [new Sequent(this, child_items)];
+        this.targets = [item];
+      } else if(action == "mult2") {
+        var children = []
+        for(var childidx = 0; childidx < item.prop.arity; ++childidx) {
           var child_items = [];
           var child_items_last = [];
           for(var i = 0; i < this.items.length; ++i) {
             if(this.items[i] == item) {
-              if(item.prop instanceof PLLImpl) {
+              if(item.prop instanceof PLLImpl && childidx == 0) {
                 child_items_last.push(new SequentItem(
                       item.prop.lhs, !item.is_in_succedent));
-                child_items.push(new SequentItem(
-                      item.prop.rhs, item.is_in_succedent));
-              } else if(item.prop.arity == 2) {
+              } else if(childidx == 0) {
                 child_items.push(new SequentItem(
                       item.prop.lhs, item.is_in_succedent));
+              } else {
+                child_items.push(new SequentItem(
+                      item.prop.rhs, item.is_in_succedent));
+              }
+            } else {
+              var child_item = new SequentItem(
+                  this.items[i].prop, this.items[i].is_in_succedent);
+              child_item.parent = this.items[i];
+              if(childidx == 0) {
+                child_item.inheritance = "multiplicative0";
+              } else {
+                child_item.inheritance = "multiplicative1";
+              }
+              child_items.push(child_item);
+            }
+          }
+          child_items = child_items.concat(child_items_last);
+          children.push(new Sequent(this, child_items));
+        }
+        this.children = children;
+        this.targets = [item];
+        if(item.prop.arity == 0) {
+          var usage_ok = true;
+          for(var i = 0; i < this.items.length; ++i) {
+            if(this.items[i] != item &&
+                this.items[i].usage.usage == 1) {
+              usage_ok = false;
+            }
+          }
+          if(!usage_ok) {
+            this.children = null;
+            this.targets = null;
+          }
+        }
+      } else if(action == "add1L" || action == "add1R") {
+        var child_items = [];
+        var child_items_last = [];
+        for(var i = 0; i < this.items.length; ++i) {
+          if(this.items[i] == item) {
+            if(action == "add1L") {
+              child_items_last.push(new SequentItem(
+                    item.prop.lhs, item.is_in_succedent));
+            } else {
+              child_items_last.push(new SequentItem(
+                    item.prop.rhs, item.is_in_succedent));
+            }
+          } else {
+            var child_item = new SequentItem(
+                this.items[i].prop, this.items[i].is_in_succedent);
+            child_item.parent = this.items[i];
+            child_item.inheritance = "same";
+            child_items.push(child_item);
+          }
+        }
+        if(item.is_in_succedent) {
+          child_items = child_items.concat(child_items_last);
+        } else {
+          child_items = child_items_last.concat(child_items);
+        }
+        this.children = [new Sequent(this, child_items)];
+        this.targets = [item];
+      } else if(action == "add2") {
+        var children = []
+        for(var childidx = 0; childidx < item.prop.arity; ++childidx) {
+          var child_items = [];
+          for(var i = 0; i < this.items.length; ++i) {
+            if(this.items[i] == item) {
+              if(childidx == 0) {
+                child_items.push(new SequentItem(
+                      item.prop.lhs, item.is_in_succedent));
+              } else {
                 child_items.push(new SequentItem(
                       item.prop.rhs, item.is_in_succedent));
               }
@@ -524,59 +683,14 @@ $(function() {
               child_items.push(child_item);
             }
           }
-          child_items = child_items.concat(child_items_last);
-          this.children = [new Sequent(this, child_items)];
-          this.targets = [item];
-        } else {
-          var children = []
-          for(var childidx = 0; childidx < item.prop.arity; ++childidx) {
-            var child_items = [];
-            var child_items_last = [];
-            for(var i = 0; i < this.items.length; ++i) {
-              if(this.items[i] == item) {
-                if(item.prop instanceof PLLImpl && childidx == 0) {
-                  child_items_last.push(new SequentItem(
-                        item.prop.lhs, !item.is_in_succedent));
-                } else if(childidx == 0) {
-                  child_items.push(new SequentItem(
-                        item.prop.lhs, item.is_in_succedent));
-                } else {
-                  child_items.push(new SequentItem(
-                        item.prop.rhs, item.is_in_succedent));
-                }
-              } else {
-                var child_item = new SequentItem(
-                    this.items[i].prop, this.items[i].is_in_succedent);
-                child_item.parent = this.items[i];
-                if(childidx == 0) {
-                  child_item.inheritance = "multiplicative0";
-                } else {
-                  child_item.inheritance = "multiplicative1";
-                }
-                child_items.push(child_item);
-              }
-            }
-            child_items = child_items.concat(child_items_last);
-            children.push(new Sequent(this, child_items));
-          }
-          this.children = children;
-          this.targets = [item];
-          if(item.prop.arity == 0) {
-            var usage_ok = true;
-            for(var i = 0; i < this.items.length; ++i) {
-              if(this.items[i] != item &&
-                  this.items[i].usage.usage == 1) {
-                usage_ok = false;
-              }
-            }
-            if(!usage_ok) {
-              this.children = null;
-              this.targets = null;
-            }
-          }
+          children.push(new Sequent(this, child_items));
         }
+        this.children = children;
+        this.targets = [item];
+      } else if(action == "do_nothing") {
+        // do nothing
       } else {
-        console.log("TODO");
+        console.log("TODO: " + action);
       }
       this.reconstructChildren();
       this.triggerUpdate();
