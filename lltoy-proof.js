@@ -18,19 +18,19 @@ var SequentItem = (function() {
     this.usage = null;
 
     this.actions = null;
-    if(this.prop instanceof PLLAtom) {
+    if(this.prop.name.match(/^[A-Z][A-Za-z_0-9]*$/)) {
       this.actions = ["atom"];
-    } else if(this.prop instanceof PLLNeg) {
+    } else if(this.prop.name == "¬") {
       this.actions = ["neg"];
-    } else if(this.prop.llkind == "multiplicative") {
-      if(this.is_conjunctive_left()) {
+    } else if(this.prop.name.match(/^[⊸⊗⅋]$/)) {
+      if(this.prop.name == "⊗" ^ this.is_in_succedent) {
         this.actions = ["mult1"];
       } else {
         this.actions = ["mult2"];
       }
-    } else if(this.prop.llkind == "additive") {
-      if(this.is_conjunctive_left()) {
-        if(this.prop.arity == 0) {
+    } else if(this.prop.name.match(/^[＆⊕]$/)) {
+      if(this.prop.name == "＆" ^ this.is_in_succedent) {
+        if(this.prop.args.length == 0) {
           this.actions = ["do_nothing"];
         } else {
           this.actions = ["add1L", "add1R"];
@@ -38,8 +38,8 @@ var SequentItem = (function() {
       } else {
         this.actions = ["add2"];
       }
-    } else if(this.prop.llkind == "exponential") {
-      if(this.is_conjunctive_left()) {
+    } else if(this.prop.name.match(/^[!?]$/)) {
+      if(this.prop.name == "!" ^ this.is_in_succedent) {
         this.actions = ["dereliction", "weakening", "contraction"];
       } else {
         this.actions = ["promotion"];
@@ -63,11 +63,11 @@ var SequentItem = (function() {
         this.html_action_buttons[i].addClass("btn");
         this.html_action_buttons[i].addClass("btn-default");
         if(this.actions[i] == "add1L") {
-          this.html_action_buttons[i].text(this.prop.lhs.toText());
+          this.html_action_buttons[i].text(this.prop.args[0].toText());
         } else if(this.actions[i] == "add1R") {
-          this.html_action_buttons[i].text(this.prop.rhs.toText());
+          this.html_action_buttons[i].text(this.prop.args[1].toText());
         } else if(this.actions[i] == "dereliction") {
-          this.html_action_buttons[i].text(this.prop.sub.toText());
+          this.html_action_buttons[i].text(this.prop.args[0].toText());
         } else if(this.actions[i] == "weakening") {
           this.html_action_buttons[i].text("-");
         } else if(this.actions[i] == "contraction") {
@@ -98,9 +98,6 @@ var SequentItem = (function() {
       this.html_main = this.html_main_button;
     }
   };
-  SequentItem.prototype.is_conjunctive_left = function() {
-    return this.prop.is_conjunctive != this.is_in_succedent;
-  }
   SequentItem.prototype.updateHTML = function() {
     this.html_main_button.removeClass("btn-default");
     this.html_main_button.removeClass("btn-primary");
@@ -244,7 +241,7 @@ var Sequent = (function() {
       num_children = 1;
       homoinheritance = true;
     } else if(action == "atom" || action == "mult2" || action == "add2") {
-      num_children = target_item.prop.arity;
+      num_children = target_item.prop.args.length;
       homoinheritance = (action == "add2");
     }
     var child_items = Array(num_children);
@@ -258,41 +255,41 @@ var Sequent = (function() {
         if(action == "atom") {
         } else if(action == "neg") {
           if(itemi.is_in_succedent) {
-            child_items[0][2].push(new SequentItem(itemi.prop.sub, !itemi.is_in_succedent));
+            child_items[0][2].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
           } else {
-            child_items[0][0].push(new SequentItem(itemi.prop.sub, !itemi.is_in_succedent));
+            child_items[0][0].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
           }
         } else if(action == "mult1") {
-          if(itemi.prop.arity == 2) {
-            if(itemi.prop instanceof PLLImpl) {
-              child_items[0][2].push(new SequentItem(itemi.prop.lhs, !itemi.is_in_succedent));
+          if(itemi.prop.args.length == 2) {
+            if(itemi.prop.name == "⊸") {
+              child_items[0][2].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
             } else {
-              child_items[0][1].push(new SequentItem(itemi.prop.lhs, itemi.is_in_succedent));
+              child_items[0][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
             }
-            child_items[0][1].push(new SequentItem(itemi.prop.rhs, itemi.is_in_succedent));
+            child_items[0][1].push(new SequentItem(itemi.prop.args[1], itemi.is_in_succedent));
           }
         } else if(action == "add1L") {
-          child_items[0][1].push(new SequentItem(itemi.prop.lhs, itemi.is_in_succedent));
+          child_items[0][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
         } else if(action == "add1R") {
-          child_items[0][1].push(new SequentItem(itemi.prop.rhs, itemi.is_in_succedent));
+          child_items[0][1].push(new SequentItem(itemi.prop.args[1], itemi.is_in_succedent));
         } else if(action == "mult2" || action == "add2") {
           for(var childidx = 0; childidx < num_children; ++childidx) {
-            if(itemi.prop instanceof PLLImpl && childidx == 0) {
-              child_items[childidx][0].push(new SequentItem(itemi.prop.lhs, !itemi.is_in_succedent));
+            if(itemi.prop.name == "⊸" && childidx == 0) {
+              child_items[childidx][0].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
             } else if(childidx == 0) {
-              child_items[childidx][1].push(new SequentItem(itemi.prop.lhs, itemi.is_in_succedent));
+              child_items[childidx][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
             } else {
-              child_items[childidx][1].push(new SequentItem(itemi.prop.rhs, itemi.is_in_succedent));
+              child_items[childidx][1].push(new SequentItem(itemi.prop.args[1], itemi.is_in_succedent));
             }
           }
         } else if(action == "dereliction") {
-          child_items[0][1].push(new SequentItem(itemi.prop.sub, itemi.is_in_succedent));
+          child_items[0][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
         } else if(action == "weakening") {
         } else if(action == "contraction") {
           child_items[0][1].push(new SequentItem(itemi.prop, itemi.is_in_succedent));
           child_items[0][1].push(new SequentItem(itemi.prop, itemi.is_in_succedent));
         } else if(action == "promotion") {
-          child_items[0][1].push(new SequentItem(itemi.prop.sub, itemi.is_in_succedent));
+          child_items[0][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
         } else {
           console.log("TODO");
         }
@@ -312,7 +309,9 @@ var Sequent = (function() {
           itemi.usage_equations.push(eqn2);
         }
         if(action == "promotion") {
-          if(itemi.prop.llkind != "exponential" || !itemi.is_conjunctive_left()) {
+          if(itemi.prop.name == "!" && !itemi.is_in_succedent ||
+              itemi.prop.name == "?" && itemi.is_in_succedent) {
+          } else {
             itemi.usage_equations.push([]);
           }
         }
