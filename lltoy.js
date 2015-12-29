@@ -65,6 +65,7 @@ $(function() {
     }
     proof = new Proof(selected_logic);
     proof.setRoot(new Sequent(null, [new SequentItem(prop, true)]));
+    proof.root.initializeHTML();
     proof.update_hook = function() {
       proof_status_label.removeClass("label-default");
       proof_status_label.removeClass("label-success");

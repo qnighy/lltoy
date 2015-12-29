@@ -9,21 +9,28 @@ var UsageResolutionError = (function() {
 })();
 var SequentItem = (function() {
   var SequentItem = function(prop, is_in_succedent) {
-    var self = this;
     this.parent = null;
     this.usage_equations = [];
     this.prop = prop;
     this.sequent = null;
     this.is_in_succedent = is_in_succedent;
     this.usage = null;
-
     this.actions = null;
+  };
+  SequentItem.prototype.updateActions = function() {
+    var self = this;
     if(this.prop.name.match(/^[A-Z][A-Za-z_0-9]*$/)) {
       this.actions = ["atom"];
     } else if(this.prop.name == "¬") {
       this.actions = ["neg"];
     } else if(this.prop.name.match(/^[→∧∨]$/)) {
-      if(this.prop.name == "∧" ^ this.is_in_succedent) {
+      if(this.sequent.top.logic == "intuitionistic" && this.prop.name == "∨" && this.is_in_succedent) {
+        if(this.prop.args.length == 0) {
+          this.actions = ["do_nothing"];
+        } else {
+          this.actions = ["add1L", "add1R"];
+        }
+      } else if(this.prop.name == "∧" ^ this.is_in_succedent) {
         this.actions = ["mult1"];
       } else {
         this.actions = ["add2"];
@@ -183,7 +190,6 @@ var SequentItem = (function() {
 })();
 var Sequent = (function() {
   var Sequent = function(parent, items) {
-    var self = this;
     this.parent = parent;
     this.top = this.parent == null ? null : this.parent.top;
     this.items = items;
@@ -194,7 +200,12 @@ var Sequent = (function() {
     for(var i = 0; i < this.items.length; ++i) {
       this.items[i].sequent = this;
     }
-
+  };
+  Sequent.prototype.initializeHTML = function() {
+    var self = this;
+    for(var i = 0; i < this.items.length; ++i) {
+      this.items[i].updateActions();
+    }
     this.html_container = $("<div></div>");
     this.html_main = $("<span></span>").appendTo(this.html_container);
     this.html_main.addClass("btn-group");
@@ -266,6 +277,13 @@ var Sequent = (function() {
           } else {
             child_items[0][0].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
           }
+          if(this.top.logic == "intuitionistic") {
+            if(itemi.is_in_succedent) {
+              child_items[0][1].push(new SequentItem(new PropCompound("∨", []), itemi.is_in_succedent));
+            } else {
+              child_items[0][1].push(new SequentItem(itemi.prop, itemi.is_in_succedent));
+            }
+          }
         } else if(action == "mult1") {
           if(itemi.prop.args.length == 2) {
             if(itemi.prop.name.match(/^[→⊸]$/)) {
@@ -283,6 +301,9 @@ var Sequent = (function() {
           for(var childidx = 0; childidx < num_children; ++childidx) {
             if(itemi.prop.name.match(/^[→⊸]$/) && childidx == 0) {
               child_items[childidx][0].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
+              if(this.top.logic == "intuitionistic") {
+                child_items[childidx][1].push(new SequentItem(itemi.prop, itemi.is_in_succedent));
+              }
             } else if(childidx == 0) {
               child_items[childidx][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
             } else {
@@ -306,7 +327,10 @@ var Sequent = (function() {
         for(var childidx = 0; childidx < num_children; ++childidx) {
           var child_item = new SequentItem(itemi.prop, itemi.is_in_succedent);
           child_item.parent = itemi;
-          child_items[childidx][1].push(child_item);
+          if(this.top.logic == "intuitionistic" && target_item.prop.name.match(/^[→¬]$/) && !target_item.is_in_succedent && childidx == 0 && itemi.is_in_succedent) {
+          } else {
+            child_items[childidx][1].push(child_item);
+          }
           eqn2.push(child_item);
           if(homoinheritance) {
             itemi.usage_equations.push([child_item]);
@@ -343,7 +367,9 @@ var Sequent = (function() {
       for(var childidx = 0; childidx < num_children; ++childidx) {
         var l = child_items[childidx];
         var ll = l[0].concat(l[1]).concat(l[2]);
-        this.children.push(new Sequent(this, ll));
+        var s = new Sequent(this, ll);
+        s.initializeHTML();
+        this.children.push(s);
       }
       this.pending_target = null;
     } else {

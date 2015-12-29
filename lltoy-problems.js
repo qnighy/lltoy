@@ -41,6 +41,9 @@ var default_propositions_data = {
     "⊤→A∨⊤",
     "¬(A∧¬A)",
     "A∨¬A",
+    "¬¬(A∨¬A)",
+    "((A→B)→A)→A",
+    "¬¬(((A→B)→A)→A)",
   ],
   "intuitionistic" : [
     "A→A",
@@ -78,6 +81,8 @@ var default_propositions_data = {
     "A∨⊤→⊤",
     "⊤→A∨⊤",
     "¬(A∧¬A)",
+    "¬¬(A∨¬A)",
+    "¬¬(((A→B)→A)→A)",
   ],
   "modal_k" : [
     "□(A→A)",
