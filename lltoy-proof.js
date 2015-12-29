@@ -57,6 +57,16 @@ var SequentItem = (function() {
       } else {
         this.actions = ["promotion"];
       }
+    } else if(this.prop.name.match(/^[□◊]$/)) {
+      if(this.prop.name == "□" ^ this.is_in_succedent) {
+        if(this.sequent.top.logic.match(/^modal_(?:t|s4)$/)) {
+          this.actions = ["dereliction"]
+        } else {
+          this.actions = ["do_nothing"]
+        }
+      } else {
+        this.actions = ["promotion"];
+      }
     } else {
       console.log("TODO");
     }
@@ -328,6 +338,14 @@ var Sequent = (function() {
           var child_item = new SequentItem(itemi.prop, itemi.is_in_succedent);
           child_item.parent = itemi;
           if(this.top.logic == "intuitionistic" && target_item.prop.name.match(/^[→¬]$/) && !target_item.is_in_succedent && childidx == 0 && itemi.is_in_succedent) {
+          } else if(this.top.logic.match(/^modal_/) && action == "promotion") {
+            if(itemi.prop.name == "□" && !itemi.is_in_succedent ||
+                itemi.prop.name == "◊" && itemi.is_in_succedent) {
+              if(this.top.logic.match(/^modal_[kt]/)) {
+                child_item.prop = itemi.prop.args[0];
+              }
+              child_items[childidx][1].push(child_item);
+            }
           } else {
             child_items[childidx][1].push(child_item);
           }
@@ -339,7 +357,7 @@ var Sequent = (function() {
         if(!homoinheritance) {
           itemi.usage_equations.push(eqn2);
         }
-        if(action == "promotion") {
+        if(this.top.logic == "linear" && action == "promotion") {
           if(itemi.prop.name == "!" && !itemi.is_in_succedent ||
               itemi.prop.name == "?" && itemi.is_in_succedent) {
           } else {
