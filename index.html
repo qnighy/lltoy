@@ -15,7 +15,22 @@
   <body>
     <div class="container" role="main">
       <div class="jumbotron">
-        <h1>LL Toy</h1>
+        <h1 id="heading_title">LL Toy</h1>
+        <div id="logic-type-selector">
+          <div class="btn-group" role="group">
+            <button id="select_classical_logic" type="button" class="btn btn-default">Classical Logic</button>
+            <button id="select_intuitionistic_logic" type="button" class="btn btn-default">Intuitionistic Logic</button>
+            <div class="btn-group" role="group">
+              <button id="select_modal_logic" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Modal Logic<span class="caret"></span></button>
+              <ul class="dropdown-menu">
+                <li id="select_modal_logic_k"><a href="javascript:void(0)">Modal Logic K</a></li>
+                <li id="select_modal_logic_t"><a href="javascript:void(0)">Modal Logic T</a></li>
+                <li id="select_modal_logic_s4"><a href="javascript:void(0)">Modal Logic S4</a></li>
+              </ul>
+            </div>
+            <button id="select_linear_logic" type="button" class="btn btn-default">Linear Logic</button>
+          </div>
+        </div>
         <p>A B C ⊸ <sup>⊥</sup> ⊗ 1 ⅋ ⊥ ＆ ⊤ ⊕ 0 ! ?</p>
         <div class="input-group">
           <div class="input-group-btn">
@@ -23,7 +38,7 @@
             <ul id="default-propositions" class="dropdown-menu">
             </ul>
           </div>
-          <input id="proposition-to-solve" type="text" value="A⊸A" class="form-control" aria-label="...">
+          <input id="proposition-to-solve" type="text" class="form-control">
           <span class="input-group-btn">
             <button id="start-proving" type="button" class="btn btn-primary">Start!</button>
           </span>
