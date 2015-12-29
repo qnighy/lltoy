@@ -4,7 +4,6 @@ $(function() {
   var proposition_to_solve = $("#proposition-to-solve");
   var proof_status = $("#proof-status");
   var proof_status_label = $("<span class=\"label label-default\"></span>").appendTo(proof_status);
-  proof_status_label.text("Input or select a proposition.");
   var proof_area = $("#proof-area");
 
   var selected_logic = null;
@@ -41,6 +40,9 @@ $(function() {
       default_propositions.append(li);
     }
     proposition_to_solve.val(default_propositions_data[selected_logic][0]);
+
+    proof_area.empty();
+    proof_status_label.text("Input or select a proposition.");
   };
   $("#select_classical_logic").click(function() { update_selected_logic("classical"); });
   $("#select_intuitionistic_logic").click(function() { update_selected_logic("intuitionistic"); });
@@ -49,11 +51,11 @@ $(function() {
   $("#select_modal_logic_s4 a").click(function() { update_selected_logic("modal_s4"); });
   $("#select_linear_logic").click(function() { update_selected_logic("linear"); });
   update_selected_logic("classical");
-  var root_sequent = null;
+  var proof = null;
   $("#start-proving").click(function() {
     var propstr = proposition_to_solve.val();
     var proplex = lex(propstr);
-    var prop = parse(proplex);
+    var prop = parse(selected_logic, proplex);
     if(prop == null) {
       proof_status_label.removeClass("label-default");
       proof_status_label.removeClass("label-success");
@@ -61,12 +63,13 @@ $(function() {
       proof_status_label.text("Parse error.");
       return;
     }
-    root_sequent = new Sequent(null, [new SequentItem(prop, true)]);
-    root_sequent.update_hook = function() {
+    proof = new Proof(selected_logic);
+    proof.setRoot(new Sequent(null, [new SequentItem(prop, true)]));
+    proof.update_hook = function() {
       proof_status_label.removeClass("label-default");
       proof_status_label.removeClass("label-success");
       proof_status_label.removeClass("label-warning");
-      var count = root_sequent.countRemainingGoals();
+      var count = proof.root.countRemainingGoals();
       if(count == 0) {
         proof_status_label.text("complete!");
         proof_status_label.addClass("label-success");
@@ -76,8 +79,8 @@ $(function() {
       }
     };
     proof_area.empty();
-    proof_area.append(root_sequent.html_container);
+    proof_area.append(proof.root.html_container);
 
-    root_sequent.update();
+    proof.update();
   });
 });

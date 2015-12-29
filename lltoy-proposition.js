@@ -20,6 +20,8 @@ var PropCompound = (function() {
   PropCompound.prototype = Object.create(PropCommon.prototype);
   PropCompound.prototype.constructor = PropCompound;
   var unit_name_table = {
+    "∧": "⊤",
+    "∨": "⊥",
     "⊗": "1",
     "⅋": "⊥",
     "＆": "⊤",
@@ -37,9 +39,9 @@ var PropCompound = (function() {
         ret += ")";
       }
       return ret;
-    } else if(this.name.match(/^[¬!?]$/)) {
+    } else if(this.name.match(/^[¬□◊!?]$/)) {
       return "(" + this.name + this.args[0].toText() + ")";
-    } else if(this.name.match(/^[⊸⊗⅋＆⊕]$/)) {
+    } else if(this.name.match(/^[→⊸∧∨⊗⅋＆⊕]$/)) {
       if(this.args.length == 0) {
         return unit_name_table[this.name];
       } else {

@@ -22,6 +22,12 @@ var SequentItem = (function() {
       this.actions = ["atom"];
     } else if(this.prop.name == "¬") {
       this.actions = ["neg"];
+    } else if(this.prop.name.match(/^[→∧∨]$/)) {
+      if(this.prop.name == "∧" ^ this.is_in_succedent) {
+        this.actions = ["mult1"];
+      } else {
+        this.actions = ["add2"];
+      }
     } else if(this.prop.name.match(/^[⊸⊗⅋]$/)) {
       if(this.prop.name == "⊗" ^ this.is_in_succedent) {
         this.actions = ["mult1"];
@@ -179,6 +185,7 @@ var Sequent = (function() {
   var Sequent = function(parent, items) {
     var self = this;
     this.parent = parent;
+    this.top = this.parent == null ? null : this.parent.top;
     this.items = items;
     this.pending_target = null;
     this.targets = null;
@@ -206,7 +213,7 @@ var Sequent = (function() {
           self.items[i].usage_equations = [];
         }
         self.reconstructChildren();
-        self.root().update();
+        self.top.update();
       }
     });
     for(var i = 0; i < this.items.length; ++i) {
@@ -261,7 +268,7 @@ var Sequent = (function() {
           }
         } else if(action == "mult1") {
           if(itemi.prop.args.length == 2) {
-            if(itemi.prop.name == "⊸") {
+            if(itemi.prop.name.match(/^[→⊸]$/)) {
               child_items[0][2].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
             } else {
               child_items[0][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
@@ -274,7 +281,7 @@ var Sequent = (function() {
           child_items[0][1].push(new SequentItem(itemi.prop.args[1], itemi.is_in_succedent));
         } else if(action == "mult2" || action == "add2") {
           for(var childidx = 0; childidx < num_children; ++childidx) {
-            if(itemi.prop.name == "⊸" && childidx == 0) {
+            if(itemi.prop.name.match(/^[→⊸]$/) && childidx == 0) {
               child_items[childidx][0].push(new SequentItem(itemi.prop.args[0], !itemi.is_in_succedent));
             } else if(childidx == 0) {
               child_items[childidx][1].push(new SequentItem(itemi.prop.args[0], itemi.is_in_succedent));
@@ -316,6 +323,9 @@ var Sequent = (function() {
           }
         }
       }
+      if(this.top.logic != "linear") {
+        itemi.usage_equations = [[1]];
+      }
     }
     if(!cancelled) {
       try {
@@ -344,11 +354,8 @@ var Sequent = (function() {
       }
     }
     this.reconstructChildren();
-    this.root().update();
+    this.top.update();
   };
-  Sequent.prototype.root = function() {
-    return this.parent == null ? this : this.parent.root();
-  }
   Sequent.prototype.reconstructChildren = function() {
     this.html_ul.empty();
     this.html_turnstile.removeClass("btn-danger");
@@ -377,7 +384,7 @@ var Sequent = (function() {
   };
   Sequent.prototype.updateUsage = function() {
     for(var i = 0; i < this.items.length; ++i) {
-      if(this.items[i].parent == null) {
+      if(this.top.logic != "linear" || this.items[i].parent == null) {
         this.items[i].setUsage(1);
       }
       this.items[i].solveUsageEquations();
@@ -400,14 +407,6 @@ var Sequent = (function() {
       }
     }
   };
-  Sequent.prototype.update = function() {
-    this.resetUsage();
-    this.updateUsage();
-    this.updateHTML();
-    if(this.update_hook) {
-      this.update_hook();
-    }
-  };
   Sequent.prototype.countRemainingGoals = function() {
     if(this.children == null) return 1;
     var sum = 0;
@@ -417,5 +416,25 @@ var Sequent = (function() {
     return sum;
   };
   return Sequent;
+})();
+var Proof = (function() {
+  var Proof = function(logic) {
+    this.logic = logic;
+    this.root = null;
+    this.update_hook = null;
+  };
+  Proof.prototype.setRoot = function(new_root) {
+    this.root = new_root;
+    this.root.top = this;
+  };
+  Proof.prototype.update = function() {
+    this.root.resetUsage();
+    this.root.updateUsage();
+    this.root.updateHTML();
+    if(this.update_hook) {
+      this.update_hook();
+    }
+  };
+  return Proof;
 })();
 
