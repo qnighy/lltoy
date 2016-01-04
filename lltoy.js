@@ -15,6 +15,14 @@ $(function() {
     "modal_s4" : "S4",
     "linear" : "LL",
   };
+  var symbols = {
+    "classical" : ["→", "¬", "∧", "∨", "⊤", "⊥"],
+    "intuitionistic" : ["→", "¬", "∧", "∨", "⊤", "⊥"],
+    "modal_k" : ["→", "¬", "∧", "∨", "⊤", "⊥", "□", "◊"],
+    "modal_t" : ["→", "¬", "∧", "∨", "⊤", "⊥", "□", "◊"],
+    "modal_s4" : ["→", "¬", "∧", "∨", "⊤", "⊥", "□", "◊"],
+    "linear" : ["⊸", "¬", "⊗", "⅋", "＆", "⊕", "⊥", "1", "⊤", "0", "!", "?"],
+  };
   var update_selected_logic = function(new_selected_logic) {
     selected_logic = new_selected_logic;
     $("#select_classical_logic").removeClass("btn-default btn-primary").addClass(selected_logic == "classical" ? "btn-primary" : "btn-default");
@@ -40,6 +48,19 @@ $(function() {
       default_propositions.append(li);
     }
     proposition_to_solve.val(default_propositions_data[selected_logic][0]);
+
+    var symbol_buttons = $("#symbol-buttons");
+    symbol_buttons.empty();
+    for(var i = 0; i < symbols[selected_logic].length; ++i) {
+      var symbol = symbols[selected_logic][i];
+      var symbol_button = $("<button class=\"btn btn-default\"></button>").appendTo(symbol_buttons);
+      symbol_button.text(symbol);
+      symbol_button.click((function(symbol) {
+        return function() {
+          proposition_to_solve.selection('replace', {text: symbol, caret: "end"});
+        };
+      })(symbol));
+    }
 
     proof_area.empty();
     proof_status_label.text("Input or select a proposition.");
