@@ -1,25 +1,51 @@
 "use strict";
 
-var lex = function(str) {
-  var lex = [];
-  var mch = null;
-  while(str.length > 0) {
-    if(mch = str.match(/^\s+/)) {
-      str = str.substring(mch[0].length);
-    } else if(mch = str.match(/^[a-zA-Z_][a-zA-Z_0-9]*/)) {
-      lex.push(mch[0]);
-      str = str.substring(mch[0].length);
-    } else if(mch = str.match(/^[→⊸∧∨⊗⅋＆⊕1⊥⊤0¬□◊!?]/)) {
-      lex.push(mch[0]);
-      str = str.substring(mch[0].length);
-    } else {
-      lex.push(str.charAt(0));
-      str = str.substring(1);
+var lex = (function() {
+  var latex_like_symbols = {
+    "\\to" : "→",
+    "\\lnot" : "¬",
+    "\\land" : "∧",
+    "\\lor" : "∨",
+    "\\bot" : "⊥",
+    "\\top" : "⊤",
+    "\\Box" : "□",
+    "\\Diamond" : "◊",
+    "\\multimap" : "⊸",
+    "\\otimes" : "⊗",
+    "\\parr" : "⅋",
+    "\\oplus" : "⊕",
+  };
+  return function(str) {
+    var lex = [];
+    var mch = null;
+    while(str.length > 0) {
+      if(mch = str.match(/^\s+/)) {
+        str = str.substring(mch[0].length);
+      } else if(mch = str.match(/^[a-zA-Z_][a-zA-Z_0-9]*/)) {
+        lex.push(mch[0]);
+        str = str.substring(mch[0].length);
+      } else if(mch = str.match(/^\\[a-zA-Z_][a-zA-Z_0-9]*/)) {
+        if(mch[0] in latex_like_symbols) {
+          lex.push(latex_like_symbols[mch[0]]);
+        } else {
+          lex.push(mch[0]);
+        }
+        str = str.substring(mch[0].length);
+      } else if(mch = str.match(/^\\?&/)) {
+        lex.push("＆");
+        str = str.substring(mch[0].length);
+      } else if(mch = str.match(/^[→⊸∧∨⊗⅋＆⊕1⊥⊤0¬□◊!?]/)) {
+        lex.push(mch[0]);
+        str = str.substring(mch[0].length);
+      } else {
+        lex.push(str.charAt(0));
+        str = str.substring(1);
+      }
     }
-  }
-  lex.push("$$");
-  return lex;
-};
+    lex.push("$$");
+    return lex;
+  };
+})();
 
 var parseProp = function(logic, lex, idx, prec) {
   if(prec >= 90) {
